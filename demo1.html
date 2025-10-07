@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Meal Budget Planner - Complete AI-Powered Nutrition & Cost Optimization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/3.0.3/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        }
+        .hero-bg {
+            background: linear-gradient(135deg, #2d3748 0%, #4a5568 50%, #718096 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="%23ffffff" opacity="0.05"/><circle cx="75" cy="75" r="1" fill="%23ffffff" opacity="0.05"/><circle cx="50" cy="10" r="0.5" fill="%23ffffff" opacity="0.03"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            pointer-events: none;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        .meal-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .meal-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        .meal-card.selected {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
+        }
+        .budget-progress {
+            background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%);
+            height: 8px;
+            border-radius: 4px;
+            transition: all 0.5s ease;
+        }
+        .step-indicator {
+            transition: all 0.3s ease;
+        }
+        .step-indicator.active {
+            background: #10b981;
+            color: white;
+        }
+        .step-indicator.completed {
+            background: #059669;
+            color: white;
+        }
+        .floating-element {
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .pulse-green {
+            animation: pulse-green 2s infinite;
+        }
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+        }
+        .ingredient-tag {
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .cost-savings {
+            background: linear-gradient(135deg, #10b981, #34d399);
+            color: white;
+        }
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
+            margin: 2rem 0;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #10b981, #34d399);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .profile-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+        }
+        .analytics-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+        .analytics-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+        .progress-ring-circle {
+            transition: stroke-dashoffset 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white/80 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-utensils text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900">SmartMeal AI</h1>
+                        <p class="text-xs text-gray-500">Budget & Nutrition Planner</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="hidden md:flex items-center space-x-4">
+                        <div class="text-sm text-gray-600">
+                            <i class="fas fa-wallet text-emerald-500 mr-2"></i>
+                            Budget: <span id="nav-budget" class="font-semibold text-emerald-600">₱0</span>
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            <i class="fas fa-user text-emerald-500 mr-2"></i>
+                            <span id="nav-username">Guest</span>
+                        </div>
+                    </div>
+                    <button onclick="showProfileModal()" class="px-4 py-2 text-sm bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors">
+                        <i class="fas fa-user-circle mr-2"></i>Profile
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+<!-- Hero Section (Demo Showcase) -->
+<section class="py-20 relative overflow-hidden" style="background: linear-gradient(135deg, #022c22, #065f46, #059669, #34d399);">
+  <div class="absolute inset-0 bg-black/30"></div>
+  
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center text-white">
+   
+
+    <!-- Title & Description -->
+    <h1 class="text-4xl md:text-6xl font-bold mb-6 leading-tight">
+      Experience the Future of <br>
+      <span class="text-emerald-300">Smart Meal Planning</span>
+    </h1>
+    <p class="text-lg md:text-xl text-gray-100 max-w-3xl mx-auto leading-relaxed mb-12">
+      Discover how AI simplifies meal planning, tracks your grocery budget, and helps you 
+      eat healthier — all in one intuitive dashboard. Watch SmartMeal AI make data-driven 
+      food management effortless and sustainable.
+    </p>
+
+    <!-- Quick Stats -->
+    <div class="grid md:grid-cols-4 gap-6 mb-12">
+      <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 text-center shadow-md hover:scale-105 transition">
+        <div class="text-3xl font-bold text-emerald-300 mb-2" id="total-users">1,247</div>
+        <div class="text-sm text-gray-200">Active Users</div>
+      </div>
+      <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 text-center shadow-md hover:scale-105 transition">
+        <div class="text-3xl font-bold text-emerald-300 mb-2" id="total-savings">₱156,890</div>
+        <div class="text-sm text-gray-200">Total Savings</div>
+      </div>
+      <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 text-center shadow-md hover:scale-105 transition">
+        <div class="text-3xl font-bold text-emerald-300 mb-2" id="total-meals-planned">8,934</div>
+        <div class="text-sm text-gray-200">Meals Planned</div>
+      </div>
+      <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 text-center shadow-md hover:scale-105 transition">
+        <div class="text-3xl font-bold text-emerald-300 mb-2" id="avg-savings">₱125</div>
+        <div class="text-sm text-gray-200">Avg Savings/User</div>
+      </div>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="flex justify-center">
+      <div class="flex items-center space-x-4 bg-white/10 backdrop-blur-md rounded-2xl p-4">
+        <div class="step-indicator active w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold bg-emerald-400 text-black">1</div>
+        <div class="w-8 h-0.5 bg-white/30"></div>
+        <div class="step-indicator w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-semibold text-white">2</div>
+        <div class="w-8 h-0.5 bg-white/30"></div>
+        <div class="step-indicator w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-semibold text-white">3</div>
+        <div class="w-8 h-0.5 bg-white/30"></div>
+        <div class="step-indicator w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-semibold text-white">4</div>
+        <div class="w-8 h-0.5 bg-white/30"></div>
+        <div class="step-indicator w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-semibold text-white">5</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        
+        <!-- Step 1: User Registration & Profile Setup -->
+        <section id="step-1" class="step-content">
+            <div class="glass-card rounded-3xl p-8 mb-8">
+                <div class="flex items-center mb-6">
+                    <div class="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center mr-4">
+                        <i class="fas fa-user-plus text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Create Your Profile</h2>
+                        <p class="text-gray-600">Set up your personalized meal planning experience</p>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Full Name</label>
+                        <input type="text" id="user-name" class="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg" placeholder="Enter your name">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Age (Optional)</label>
+                        <input type="number" id="user-age" class="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg" placeholder="25" min="1" max="120">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Gender (Optional)</label>
+                        <select id="user-gender" class="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg">
+                            <option value="">Select gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                            <option value="prefer-not-to-say">Prefer not to say</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Budget Period</label>
+                        <select id="budget-period" class="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg">
+                            <option value="monthly">Monthly Budget</option>
+                            <option value="weekly">Weekly Budget</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Monthly Budget (₱)</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold">₱</span>
+                            <input type="number" id="monthly-budget" class="w-full pl-8 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg font-semibold" placeholder="3000" value="3000">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Household Size</label>
+                        <select id="household-size" class="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg">
+                            <option value="1">1 Person</option>
+                            <option value="2" selected>2 People</option>
+                            <option value="3">3 People</option>
+                            <option value="4">4 People</option>
+                            <option value="5">5+ People</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Dietary Restrictions</label>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <label class="flex items-center p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-emerald-300 transition-colors">
+                            <input type="checkbox" class="dietary-restriction mr-3" value="no-pork">
+                            <span class="text-sm">No Pork</span>
+                        </label>
+                        <label class="flex items-center p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-emerald-300 transition-colors">
+                            <input type="checkbox" class="dietary-restriction mr-3" value="vegetarian">
+                            <span class="text-sm">Vegetarian</span>
+                        </label>
+                        <label class="flex items-center p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-emerald-300 transition-colors">
+                            <input type="checkbox" class="dietary-restriction mr-3" value="low-carb">
+                            <span class="text-sm">Low Carb</span>
+                        </label>
+                        <label class="flex items-center p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-emerald-300 transition-colors">
+                            <input type="checkbox" class="dietary-restriction mr-3" value="high-protein">
+                            <span class="text-sm">High Protein</span>
+                        </label>
+                        <label class="flex items-center p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-emerald-300 transition-colors">
+                            <input type="checkbox" class="dietary-restriction mr-3" value="heart-healthy">
+                            <span class="text-sm">Heart Healthy</span>
+                        </label>
+                        <label class="flex items-center p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-emerald-300 transition-colors">
+                            <input type="checkbox" class="dietary-restriction mr-3" value="gluten-free">
+                            <span class="text-sm">Gluten Free</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Preferred Cuisines</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <label class="flex items-center p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-emerald-300 transition-colors">
+                            <input type="checkbox" class="cuisine-pref mr-3" value="filipino" checked>
+                            <span class="text-sm">Filipino</span>
+                        </label>
+                        <label class="flex items-center p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-emerald-300 transition-colors">
+                            <input type="checkbox" class="cuisine-pref mr-3" value="asian">
+                            <span class="text-sm">Asian</span>
+                        </label>
+                        <label class="flex items-center p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-emerald-300 transition-colors">
+                            <input type="checkbox" class="cuisine-pref mr-3" value="american">
+                            <span class="text-sm">Western</span>
+                        </label>
+                        <label class="flex items-center p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-emerald-300 transition-colors">
+                            <input type="checkbox" class="cuisine-pref mr-3" value="mediterranean">
+                            <span class="text-sm">Mediterranean</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Meals to Plan Per Month</label>
+                    <input type="range" id="meals-per-month" min="10" max="90" value="30" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-sm text-gray-500 mt-1">
+                        <span>10 meals</span>
+                        <span id="meals-count">30 meals</span>
+                        <span>90 meals</span>
+                    </div>
+                </div>
+
+                <button onclick="nextStep(2)" class="w-full mt-8 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-4 rounded-xl transition-all duration-300 transform hover:scale-[1.02] pulse-green">
+                    Continue to Meal Selection <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- Step 2: Enhanced Meal Selection & Preferences -->
+        <section id="step-2" class="step-content hidden">
+            <div class="glass-card rounded-3xl p-8 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center mr-4">
+                            <i class="fas fa-utensils text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900">Choose Your Meals</h2>
+                            <p class="text-gray-600">Select meals, set frequency, and choose portion sizes</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-gray-500">Monthly Budget</div>
+                        <div class="text-2xl font-bold text-emerald-600" id="display-budget">₱3,000</div>
+                    </div>
+                </div>
+
+                <!-- Budget Progress Bar -->
+                <div class="mb-6">
+                    <div class="flex justify-between text-sm text-gray-600 mb-2">
+                        <span>Budget Usage</span>
+                        <span id="budget-percentage">0%</span>
+                    </div>
+                    <div class="budget-progress-bg bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div class="budget-progress h-full rounded-full" id="budget-bar" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between text-sm text-gray-500 mt-1">
+                        <span id="current-spending">₱0</span>
+                        <span id="remaining-budget">₱3,000 remaining</span>
+                    </div>
+                </div>
+
+                <!-- Meal Categories -->
+                <div class="mb-6">
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="filterMeals('all')" class="meal-filter active px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors">All Meals</button>
+                        <button onclick="filterMeals('filipino')" class="meal-filter px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors">Filipino</button>
+                        <button onclick="filterMeals('asian')" class="meal-filter px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors">Asian</button>
+                        <button onclick="filterMeals('american')" class="meal-filter px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors">Western</button>
+                    </div>
+                </div>
+
+                <!-- Meal Grid -->
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6" id="meal-grid">
+                    <!-- Meals will be populated by JavaScript -->
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button onclick="prevStep(1)" class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-xl transition-colors">
+                        <i class="fas fa-arrow-left mr-2"></i>Back
+                    </button>
+                    <button onclick="nextStep(3)" id="continue-btn-2" class="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        Continue to Analysis <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 3: AI Analysis & Optimization -->
+        <section id="step-3" class="step-content hidden">
+            <div class="glass-card rounded-3xl p-8 mb-8">
+                <div class="flex items-center mb-6">
+                    <div class="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center mr-4">
+                        <i class="fas fa-brain text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">AI Optimization Analysis</h2>
+                        <p class="text-gray-600">Smart recommendations to maximize your budget and nutrition</p>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8 mb-8">
+                    <!-- Cost Breakdown Chart -->
+                    <div class="bg-white rounded-2xl p-6 border border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Cost Breakdown</h3>
+                        <div id="cost-chart" style="height: 300px;"></div>
+                    </div>
+
+                    <!-- Nutrition Analysis -->
+                    <div class="bg-white rounded-2xl p-6 border border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Nutritional Balance</h3>
+                        <div id="nutrition-chart" style="height: 300px;"></div>
+                    </div>
+                </div>
+
+                <!-- AI Optimization Suggestions -->
+                <div class="bg-white rounded-2xl p-6 border border-gray-200 mb-8">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">AI Optimization Suggestions</h3>
+                    <div class="space-y-4" id="ai-optimizations">
+                        <!-- Optimizations will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- AI Recommendations -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">AI Recommendations</h3>
+                    <div class="space-y-4" id="ai-recommendations">
+                        <!-- Recommendations will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button onclick="prevStep(2)" class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-xl transition-colors">
+                        <i class="fas fa-arrow-left mr-2"></i>Back
+                    </button>
+                    <button onclick="nextStep(4)" class="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors">
+                        Generate Shopping List <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 4: Smart Grocery List Generator -->
+        <section id="step-4" class="step-content hidden">
+            <div class="glass-card rounded-3xl p-8 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center mr-4">
+                            <i class="fas fa-shopping-cart text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900">Smart Shopping List</h2>
+                            <p class="text-gray-600">Optimized ingredients with quantities and costs</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button onclick="downloadShoppingListPDF()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors">
+                            <i class="fas fa-file-pdf mr-2"></i>PDF
+                        </button>
+                        <button onclick="downloadShoppingList()" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors">
+                            <i class="fas fa-download mr-2"></i>Text
+                        </button>
+                        <button onclick="printShoppingList()" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors">
+                            <i class="fas fa-print mr-2"></i>Print
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Shopping List Summary -->
+                <div class="grid md:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-emerald-50 rounded-2xl p-6 border border-emerald-200">
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-receipt text-emerald-500 text-xl mr-3"></i>
+                            <h3 class="font-semibold text-gray-900">Total Cost</h3>
+                        </div>
+                        <div class="text-3xl font-bold text-emerald-600" id="total-cost">₱0</div>
+                        <div class="text-sm text-gray-600" id="total-savings">₱0 savings</div>
+                    </div>
+                    
+                    <div class="bg-blue-50 rounded-2xl p-6 border border-blue-200">
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-list text-blue-500 text-xl mr-3"></i>
+                            <h3 class="font-semibold text-gray-900">Items</h3>
+                        </div>
+                        <div class="text-3xl font-bold text-blue-600" id="total-items">0</div>
+                        <div class="text-sm text-gray-600">ingredients</div>
+                    </div>
+                    
+                    <div class="bg-purple-50 rounded-2xl p-6 border border-purple-200">
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-calendar text-purple-500 text-xl mr-3"></i>
+                            <h3 class="font-semibold text-gray-900">Meals</h3>
+                        </div>
+                        <div class="text-3xl font-bold text-purple-600" id="total-meals">0</div>
+                        <div class="text-sm text-gray-600">planned meals</div>
+                    </div>
+
+                    <div class="bg-orange-50 rounded-2xl p-6 border border-orange-200">
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-clock text-orange-500 text-xl mr-3"></i>
+                            <h3 class="font-semibold text-gray-900">Cook Time</h3>
+                        </div>
+                        <div class="text-3xl font-bold text-orange-600" id="total-cook-time">0</div>
+                        <div class="text-sm text-gray-600">minutes/week</div>
+                    </div>
+                </div>
+
+                <!-- Shopping List by Category -->
+                <div class="space-y-6" id="shopping-list">
+                    <!-- Shopping list will be populated by JavaScript -->
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button onclick="prevStep(3)" class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-xl transition-colors">
+                        <i class="fas fa-arrow-left mr-2"></i>Back
+                    </button>
+                    <button onclick="nextStep(5)" class="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors pulse-green">
+                        Complete Planning <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 5: Analytics & Reports Dashboard -->
+        <section id="step-5" class="step-content hidden">
+            <div class="glass-card rounded-3xl p-8 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center mr-4">
+                            <i class="fas fa-chart-line text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900">Analytics & Reports</h2>
+                            <p class="text-gray-600">Track your spending habits and optimize further</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button onclick="exportReport()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors">
+                            <i class="fas fa-download mr-2"></i>Export Report
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Analytics Dashboard -->
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                    <!-- Budget Overview -->
+                    <div class="analytics-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">Budget Overview</h3>
+                            <i class="fas fa-wallet text-emerald-500 text-xl"></i>
+                        </div>
+                        <div class="relative w-24 h-24 mx-auto mb-4">
+                            <svg class="progress-ring w-24 h-24">
+                                <circle class="progress-ring-circle" stroke="#e5e7eb" stroke-width="4" fill="transparent" r="40" cx="48" cy="48"/>
+                                <circle class="progress-ring-circle" stroke="#10b981" stroke-width="4" fill="transparent" r="40" cx="48" cy="48" id="budget-circle"/>
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <span class="text-lg font-bold text-emerald-600" id="budget-percent">0%</span>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-sm text-gray-600">Budget Used</div>
+                            <div class="font-semibold text-gray-900" id="budget-used">₱0 of ₱0</div>
+                        </div>
+                    </div>
+
+                    <!-- Most Cooked Meals -->
+                    <div class="analytics-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">Top Meals</h3>
+                            <i class="fas fa-utensils text-blue-500 text-xl"></i>
+                        </div>
+                        <div id="top-meals" class="space-y-2">
+                            <!-- Top meals will be populated -->
+                        </div>
+                    </div>
+
+                    <!-- Cost Breakdown -->
+                    <div class="analytics-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">Cost by Category</h3>
+                            <i class="fas fa-chart-pie text-purple-500 text-xl"></i>
+                        </div>
+                        <div id="cost-breakdown" class="space-y-2">
+                            <!-- Cost breakdown will be populated -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historical Data Chart -->
+                <div class="bg-white rounded-2xl p-6 border border-gray-200 mb-8">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Spending Trends</h3>
+                    <div id="spending-chart" style="height: 300px;"></div>
+                </div>
+
+                <!-- Detailed Analytics -->
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="bg-white rounded-2xl p-6 border border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Nutritional Analysis</h3>
+                        <div id="nutrition-analysis" class="space-y-3">
+                            <!-- Nutrition analysis will be populated -->
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-6 border border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Optimization Opportunities</h3>
+                        <div id="optimization-tips" class="space-y-3">
+                            <!-- Optimization tips will be populated -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button onclick="prevStep(4)" class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-xl transition-colors">
+                        <i class="fas fa-arrow-left mr-2"></i>Back
+                    </button>
+                    <button onclick="completePlanning()" class="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors pulse-green">
+                        Complete Planning <i class="fas fa-check ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Completion Section -->
+        <section id="completion" class="step-content hidden">
+            <div class="glass-card rounded-3xl p-8 text-center">
+                <div class="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-check text-white text-3xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Planning Complete!</h2>
+                <p class="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
+                    Your smart meal plan has been optimized for both budget and nutrition. Check your analytics dashboard to track your progress!
+                </p>
+                <div class="grid md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-emerald-50 rounded-2xl p-6 border border-emerald-200">
+                        <div class="text-2xl font-bold text-emerald-600 mb-2" id="final-savings">₱0</div>
+                        <div class="text-sm text-gray-600">Total Savings</div>
+                    </div>
+                    <div class="bg-blue-50 rounded-2xl p-6 border border-blue-200">
+                        <div class="text-2xl font-bold text-blue-600 mb-2" id="final-meals">0</div>
+                        <div class="text-sm text-gray-600">Meals Planned</div>
+                    </div>
+                    <div class="bg-purple-50 rounded-2xl p-6 border border-purple-200">
+                        <div class="text-2xl font-bold text-purple-600 mb-2" id="final-efficiency">0%</div>
+                        <div class="text-sm text-gray-600">Budget Efficiency</div>
+                    </div>
+                </div>
+                <div class="flex justify-center space-x-4">
+                    <button onclick="startOver()" class="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors">
+                        <i class="fas fa-plus mr-2"></i>Create New Plan
+                    </button>
+                    <button onclick="showAnalytics()" class="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl transition-colors">
+                        <i class="fas fa-chart-bar mr-2"></i>View Analytics
+                    </button>
+                    <button onclick="exportAllData()" class="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-xl transition-colors">
+                        <i class="fas fa-download mr-2"></i>Export Data
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold text-gray-900">User Profile</h3>
+                <button onclick="hideProfileModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="text-center mb-6">
+                <div class="user-avatar w-20 h-20 text-2xl mx-auto mb-4" id="modal-user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <h4 class="text-lg font-semibold text-gray-900" id="modal-user-name">Guest User</h4>
+                <p class="text-sm text-gray-500" id="modal-user-details">No profile set up</p>
+            </div>
+
+            <div class="space-y-4">
+                <div class="profile-card">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Monthly Budget</span>
+                        <span class="font-semibold text-emerald-600" id="modal-user-budget">₱0</span>
+                    </div>
+                </div>
+                
+                <div class="profile-card">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Household Size</span>
+                        <span class="font-semibold text-gray-900" id="modal-household-size">1 person</span>
+                    </div>
+                </div>
+
+                <div class="profile-card">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Total Plans Created</span>
+                        <span class="font-semibold text-blue-600" id="modal-total-plans">0</span>
+                    </div>
+                </div>
+
+                <div class="profile-card">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Total Savings</span>
+                        <span class="font-semibold text-emerald-600" id="modal-total-savings">₱0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex space-x-3 mt-6">
+                <button onclick="editProfile()" class="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors">
+                    <i class="fas fa-edit mr-2"></i>Edit Profile
+                </button>
+                <button onclick="resetUserData()" class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors">
+                    <i class="fas fa-trash mr-2"></i>Reset Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-50 border-t border-gray-200 py-8 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p class="text-gray-500 text-sm">© 2024 SmartMeal AI. Complete meal planning with user management and advanced analytics.</p>
+        </div>
+    </footer>
+
+    <script src="demo1.js"></script>
+</body>
+</html>
